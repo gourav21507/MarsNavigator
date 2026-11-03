@@ -86,19 +86,14 @@ function App() {
     viewer.scene.postRender.addEventListener(updateMarkerOverlay);
   updateMarkerOverlay();
 
-  viewer.camera.setView({
-    destination: Cesium.Cartesian3.fromDegrees(
-      markerLongitude,
-      markerLatitude,
-      marsRadius * 3,
-      Cesium.Ellipsoid.MARS,
+  viewer.camera.lookAt(
+    markerPosition,
+    new Cesium.HeadingPitchRange(
+      0,
+      -Cesium.Math.PI_OVER_FOUR,
+      marsRadius * 2.5,
     ),
-    orientation: {
-      heading: 0,
-      pitch: -Cesium.Math.PI_OVER_TWO,
-      roll: 0,
-    },
-  });
+  );
 
     return () => {
       removePostRenderListener();
