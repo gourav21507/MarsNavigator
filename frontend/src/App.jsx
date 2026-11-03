@@ -32,7 +32,7 @@ function App() {
   viewer.scene.skyAtmosphere.show = false;
   viewer.scene.globe.showGroundAtmosphere = false;
   const marsRadius = Cesium.Ellipsoid.MARS.maximumRadius;
-  viewer.scene.screenSpaceCameraController.minimumZoomDistance = 1_000;
+  viewer.scene.screenSpaceCameraController.minimumZoomDistance = 10_000;
   viewer.scene.screenSpaceCameraController.maximumZoomDistance =
     marsRadius * 50;
   const markerLongitude = 77.58;
@@ -43,43 +43,66 @@ function App() {
     1000,
     Cesium.Ellipsoid.MARS,
   );
-  viewer.entities.add({
-    name: "Jezero Crater marker",
-    position: markerPosition,
-    label: {
-      text: "●",
-      font: "28px sans-serif",
-      fillColor: Cesium.Color.YELLOW,
-      outlineColor: Cesium.Color.BLACK,
-      outlineWidth: 3,
-      style: Cesium.LabelStyle.FILL_AND_OUTLINE,
-      disableDepthTestDistance: Number.POSITIVE_INFINITY,
-    },
-  });
-  viewer.entities.add({
-    name: "Jezero Crater label",
-    position: markerPosition,
-    label: {
-      text: "Jezero Crater",
-      font: "14px sans-serif",
-      fillColor: Cesium.Color.WHITE,
-      showBackground: true,
-      horizontalOrigin: Cesium.HorizontalOrigin.LEFT,
-      pixelOffset: new Cesium.Cartesian2(18, -22),
-      disableDepthTestDistance: Number.POSITIVE_INFINITY,
-    },
-  });
+  const markerOverlay = document.createElement("div");
+  markerOverlay.setAttribute("aria-label", "Jezero Crater");
+  markerOverlay.style.cssText =
+    "position:absolute;display:flex;align-items:center;gap:8px;z-index:10;pointer-events:none;transform:translate(-50%,-50%);";
 
-  viewer.camera.lookAt(
-    markerPosition,
-    new Cesium.HeadingPitchRange(
-      0,
-      -Cesium.Math.PI_OVER_FOUR,
-      marsRadius * 2.5,
+  const markerDot = document.createElement("span");
+  markerDot.style.cssText =
+    "width:18px;height:18px;flex:none;border:2px solid #111;border-radius:50%;background:#ffeb00;box-shadow:0 0 0 4px rgba(255,235,0,.25);";
+
+  const markerLabel = document.createElement("span");
+  markerLabel.textContent = "Jezero Crater";
+  markerLabel.style.cssText =
+    "padding:4px 8px;border-radius:3px;background:rgba(20,20,20,.82);color:white;font:600 14px sans-serif;white-space:nowrap;";
+
+  markerOverlay.append(markerDot, markerLabel);
+  cesiumContainer.current.append(markerOverlay);
+
+  const updateMarkerOverlay = () => {
+    const screenPosition = Cesium.SceneTransforms.worldToWindowCoordinates(
+      viewer.scene,
+      markerPosition,
+    );
+    const { clientWidth, clientHeight } = cesiumContainer.current;
+
+    if (
+      !screenPosition ||
+      screenPosition.x < 0 ||
+      screenPosition.x > clientWidth ||
+      screenPosition.y < 0 ||
+      screenPosition.y > clientHeight
+    ) {
+      markerOverlay.style.display = "none";
+      return;
+    }
+
+    markerOverlay.style.display = "flex";
+    markerOverlay.style.left = `${screenPosition.x}px`;
+    markerOverlay.style.top = `${screenPosition.y}px`;
+  };
+  const removePostRenderListener =
+    viewer.scene.postRender.addEventListener(updateMarkerOverlay);
+  updateMarkerOverlay();
+
+  viewer.camera.setView({
+    destination: Cesium.Cartesian3.fromDegrees(
+      markerLongitude,
+      markerLatitude,
+      marsRadius * 3,
+      Cesium.Ellipsoid.MARS,
     ),
-  );
+    orientation: {
+      heading: 0,
+      pitch: -Cesium.Math.PI_OVER_TWO,
+      roll: 0,
+    },
+  });
 
     return () => {
+      removePostRenderListener();
+      markerOverlay.remove();
       viewer.destroy();
     };
   }, []);
